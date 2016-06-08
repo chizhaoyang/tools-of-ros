@@ -12,6 +12,7 @@ rosparam set use_sim_time true
 rosbag play --pause --clock [rosbag file]
 
 source ros_tools_ws/devel/setup.sh
+
 rosrun publish_tf publish_tf_node
 
 rviz
