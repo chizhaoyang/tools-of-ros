@@ -2,7 +2,7 @@
 
 cd
 rm -rf ros_tools_ws
-source /opt/ros/indigo/setup.bash #Source environment just to be safe
+source /opt/ros/kinetic/setup.zsh #Source environment just to be safe
 mkdir -p ~/ros_tools_ws/src
 cd ~/ros_tools_ws/src
 catkin_init_workspace
