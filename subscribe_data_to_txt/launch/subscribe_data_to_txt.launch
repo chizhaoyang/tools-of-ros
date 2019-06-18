@@ -1,0 +1,12 @@
+<launch>
+
+	<param name="/use_sim_time" value="false"/>
+
+	<node pkg="subscribe_data_to_txt"
+		name="subscribe_data_to_txt"
+		type="subscribe_data_to_txt_node"
+		output="screen"/>
+
+		<rosparam file="$(find subscribe_data_to_txt)/config/subscribe_data_to_txt.yaml"/>
+
+</launch>
