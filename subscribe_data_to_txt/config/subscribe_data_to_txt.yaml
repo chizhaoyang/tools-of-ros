@@ -1,2 +1,4 @@
-topic_name: "/nav_filter/nav_filter/states"
-file_name: "/home/chizhao/SLAM_pose_results.txt"
+topic_name2: "/smart2_02/mag/data"
+topic_name1: "/vicon/Smart2/Smart2"
+file_name1: "/home/chizhao/Documents/Magnetic_Nav/Magnetometer_Static_Data/Static_Dataset/Vicon_position_17.txt"
+file_name2: "/home/chizhao/Documents/Magnetic_Nav/Magnetometer_Static_Data/Static_Dataset/Magnetic_information_17.txt"
