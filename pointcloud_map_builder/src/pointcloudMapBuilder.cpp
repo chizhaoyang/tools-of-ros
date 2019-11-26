@@ -1,35 +1,38 @@
-#include <pointcloudMapBuilder.h>
+#include <pointcloud_map_builder/pointcloudMapBuilder.h>
 //
 // #include <message_filters/subscriber.h>
 // #include <message_filters/synchronizer.h>
 // #include <message_filters/sync_policies/approximate_time.h>
 
-pointcloudMapBuilder::pointcloudMapBuilder(){
+PointcloudMapBuilder::PointcloudMapBuilder(ros::NodeHandle& nh):_nh(nh){
   // get parameters
   if(!nh.getParam("topic/pointcloud", _pointcloudTopic)) ROS_ERROR("Failed to get param 'topic/pointcloud'");
-  // if(!nh.getParam("topic/truthOdom", _truthOdomTopic)) ROS_ERROR("Failed to get param 'topic/truthOdom'");
+  if(!nh.getParam("topic/globalMap", _globalMapTopic)) ROS_ERROR("Failed to get param 'topic/globalMap'");
   // if(!nh.getParam("frame/source", _sourceFrame)) ROS_ERROR("Failed to get param 'frame/source'");
   if(!nh.getParam("frame/target", _targetFrame)) ROS_ERROR("Failed to get param 'frame/target'");
 
+  _pubGlobalMap = nh.advertise<sensor_msgs::PointCloud2>(_globalMapTopic, 1);
 
-  _cloudIn.reset(new pcl::PointCloud<PointType>())
+  _subCloud = nh.subscribe<sensor_msgs::PointCloud2>(_pointcloudTopic, 1, &PointcloudMapBuilder::pointcloudHandler, this);
+
+  _cloudIn.reset(new pcl::PointCloud<PointType>());
   _globalMap.reset(new pcl::PointCloud<PointType>());
 
 }
 
-void pointcloudMapBuilder::pointcloudHandler(const sensor_msgs::PointCloud2COnstPtr& pointcloudMsg){
+void PointcloudMapBuilder::pointcloudHandler(const sensor_msgs::PointCloud2ConstPtr& pointcloudMsg){
   _cloudHeader = pointcloudMsg->header;
 
   pcl::fromROSMsg(*pointcloudMsg, *_cloudIn);
 
   // Remove Nan points.
   std::vector<int> indices;
-  pcl::removeNaNFromPointCloud(*_cloudIn, *_cloudIn, indeces);
+  pcl::removeNaNFromPointCloud(*_cloudIn, *_cloudIn, indices);
 
   listenTFTrans();
 }
 
-void pointcloudMapBuilder::listenTFTrans(){
+void PointcloudMapBuilder::listenTFTrans(){
 
   // listen transform matrix from tf, M^T_C
   tf::StampedTransform truthOdomTrans;
@@ -40,13 +43,15 @@ void pointcloudMapBuilder::listenTFTrans(){
   catch (tf::TransformException &ex){
     ROS_ERROR("%s",ex.what());
     ros::Duration(1.0).sleep();
-    continue;
   }
 
   double roll, pitch, yaw;
-  geometry_mesgs::Quaternion geoQuat = truthOdomTrans.getRotation();
+  // geometry_msgs::Quaternion geoQuat
+  // tf::quaternionTFToMsg(truthOdomTrans.getRotation(), geoQuat);
+  // geometry_msgs::Quaternion geoQuat = truthOdomTrans.getRotation();
   // in this case, rotate seq: yaw pitch raw
-  tf::Matrix3x3(tf::Quaternion(geoQuat.x, geoQuat.y, geoQuat.z, geoQuat.w)).getRPY(roll, pitch, yaw);
+  // tf::Matrix3x3(tf::Quaternion(geoQuat.x, geoQuat.y, geoQuat.z, geoQuat.w)).getRPY(roll, pitch, yaw);
+  tf::Matrix3x3(truthOdomTrans.getRotation()).getRPY(roll, pitch, yaw);
 
   _transfromCloudToMap[0] = roll;
   _transfromCloudToMap[1] = pitch;
@@ -58,9 +63,9 @@ void pointcloudMapBuilder::listenTFTrans(){
   transfromCloudToMap();
 }
 
-void pointcloudMapBuilder::transfromCloudToMap(){
+void PointcloudMapBuilder::transfromCloudToMap(){
   float x1, y1, z1, x2, y2, z2;
-  pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCLoud<PointType>());
+  pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
 
   size_t cloudSize;
   cloudSize = _cloudIn->points.size();
@@ -76,16 +81,16 @@ void pointcloudMapBuilder::transfromCloudToMap(){
     z2 = -sin(_transfromCloudToMap[1])*x1 + cos(_transfromCloudToMap[1])*z1;
 
     // rotate with x axis (roll).
-    cloudOut[i].x = x2;
-    cloudOut[i].y = cos(_transfromCloudToMap[0])*y2 + sin(_transfromCloudToMap[0])*z2;
-    cloudOut[i].z = -sin(_transfromCloudToMap[0])*y2 + cos(_transfromCloudToMap[0])*z2;
+    cloudOut->points[i].x = x2;
+    cloudOut->points[i].y = cos(_transfromCloudToMap[0])*y2 + sin(_transfromCloudToMap[0])*z2;
+    cloudOut->points[i].z = -sin(_transfromCloudToMap[0])*y2 + cos(_transfromCloudToMap[0])*z2;
   }
   *_globalMap += *cloudOut;
 
   publishMap();
 }
 
-void pointcloudMapBuilder::publishMap(){
+void PointcloudMapBuilder::publishMap(){
   sensor_msgs::PointCloud2 cloudMsgTemp;
 
   pcl::toROSMsg(*_globalMap, cloudMsgTemp);
