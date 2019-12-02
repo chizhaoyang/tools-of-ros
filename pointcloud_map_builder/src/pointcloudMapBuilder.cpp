@@ -6,10 +6,10 @@
 
 PointcloudMapBuilder::PointcloudMapBuilder(ros::NodeHandle& nh):_nh(nh){
   // get parameters
-  if(!nh.getParam("topic/pointcloud", _pointcloudTopic)) ROS_ERROR("Failed to get param 'topic/pointcloud'");
-  if(!nh.getParam("topic/globalMap", _globalMapTopic)) ROS_ERROR("Failed to get param 'topic/globalMap'");
-  // if(!nh.getParam("frame/source", _sourceFrame)) ROS_ERROR("Failed to get param 'frame/source'");
-  if(!nh.getParam("frame/target", _targetFrame)) ROS_ERROR("Failed to get param 'frame/target'");
+  if(!nh.getParam("/topic/pointcloud", _pointcloudTopic)) ROS_ERROR("Failed to get param 'topic/pointcloud'");
+  if(!nh.getParam("/topic/globalMap", _globalMapTopic)) ROS_ERROR("Failed to get param 'topic/globalMap'");
+  // if(!nh.getParam("/frame/source", _sourceFrame)) ROS_ERROR("Failed to get param 'frame/source'");
+  if(!nh.getParam("/frame/target", _targetFrame)) ROS_ERROR("Failed to get param 'frame/target'");
 
   _pubGlobalMap = nh.advertise<sensor_msgs::PointCloud2>(_globalMapTopic, 1);
 
@@ -38,11 +38,18 @@ void PointcloudMapBuilder::listenTFTrans(){
   tf::StampedTransform truthOdomTrans;
   tf::TransformListener tfListener;
   try{
-    tfListener.lookupTransform(_targetFrame, _cloudHeader.frame_id, _cloudHeader.stamp, truthOdomTrans);
+    ros::Time t = ros::Time(0);
+    // tfListener.waitForTransform(_targetFrame,  _cloudHeader.frame_id, _cloudHeader.stamp, ros::Duration(1.0));
+    tfListener.waitForTransform(_targetFrame,  _cloudHeader.frame_id, t, ros::Duration(1.0));
+
+    // tfListener.lookupTransform(_targetFrame, _cloudHeader.frame_id, _cloudHeader.stamp, truthOdomTrans);
+    // tfListener.lookupTransform(_targetFrame,  _cloudHeader.frame_id, _cloudHeader.stamp, truthOdomTrans);
+    tfListener.lookupTransform(_targetFrame,  _cloudHeader.frame_id, t, truthOdomTrans);
   }
   catch (tf::TransformException &ex){
     ROS_ERROR("%s",ex.what());
-    ros::Duration(1.0).sleep();
+    // ros::Duration(1.0).sleep();
+    // return;
   }
 
   double roll, pitch, yaw;
@@ -59,7 +66,8 @@ void PointcloudMapBuilder::listenTFTrans(){
   _transfromCloudToMap[3] = truthOdomTrans.getOrigin().x();
   _transfromCloudToMap[4] = truthOdomTrans.getOrigin().y();
   _transfromCloudToMap[5] = truthOdomTrans.getOrigin().z();
-
+  // std::cout<<"roll: "<<roll<<" pitch: "<<pitch<<" yaw: "<<yaw<<std::endl;
+  // std::cout<<"x: "<<_transfromCloudToMap[3]<<" y: "<<_transfromCloudToMap[4]<<" z: "<<_transfromCloudToMap[5]<<std::endl;
   transfromCloudToMap();
 }
 
@@ -69,22 +77,41 @@ void PointcloudMapBuilder::transfromCloudToMap(){
 
   size_t cloudSize;
   cloudSize = _cloudIn->points.size();
+  cloudOut->resize(cloudSize);
+
   for (size_t i=0; i<cloudSize; ++i){
     // rotate with z axis (yaw).
-    x1 = cos(_transfromCloudToMap[2])*_cloudIn->points[i].x + sin(_transfromCloudToMap[2]) *_cloudIn->points[i].y;
-    y1 = -sin(_transfromCloudToMap[2])*_cloudIn->points[i].x + cos(_transfromCloudToMap[2]) *_cloudIn->points[i].y;
+    x1 = cos(-_transfromCloudToMap[2])*_cloudIn->points[i].x + sin(-_transfromCloudToMap[2]) *_cloudIn->points[i].y;
+    y1 = -sin(-_transfromCloudToMap[2])*_cloudIn->points[i].x + cos(-_transfromCloudToMap[2]) *_cloudIn->points[i].y;
     z1 = _cloudIn->points[i].z;
 
     // rotate with y axis (pitch).
-    x2 = cos(_transfromCloudToMap[1])*x1 + sin(_transfromCloudToMap[1])*z1;
+    z2 = cos(-_transfromCloudToMap[1])*z1 + sin(-_transfromCloudToMap[1])*x1;
     y2 = y1;
-    z2 = -sin(_transfromCloudToMap[1])*x1 + cos(_transfromCloudToMap[1])*z1;
+    x2 = -sin(-_transfromCloudToMap[1])*z1 + cos(-_transfromCloudToMap[1])*x1;
 
     // rotate with x axis (roll).
-    cloudOut->points[i].x = x2;
-    cloudOut->points[i].y = cos(_transfromCloudToMap[0])*y2 + sin(_transfromCloudToMap[0])*z2;
-    cloudOut->points[i].z = -sin(_transfromCloudToMap[0])*y2 + cos(_transfromCloudToMap[0])*z2;
+    cloudOut->points[i].x = x2 + _transfromCloudToMap[3];
+    cloudOut->points[i].y = cos(-_transfromCloudToMap[0])*y2 + sin(-_transfromCloudToMap[0])*z2 + _transfromCloudToMap[4];
+    cloudOut->points[i].z = -sin(-_transfromCloudToMap[0])*y2 + cos(-_transfromCloudToMap[0])*z2 + _transfromCloudToMap[5];
+
+    // // rotate with x axis (roll).
+    // x1 = _cloudIn->points[i].x;
+    // y1 = cos(-_transfromCloudToMap[0])*_cloudIn->points[i].y + sin(-_transfromCloudToMap[0]) *_cloudIn->points[i].z;
+    // z1 = -sin(-_transfromCloudToMap[0])*_cloudIn->points[i].y + cos(-_transfromCloudToMap[0]) *_cloudIn->points[i].z;
+    //
+    // // rotate with y axis (pitch).
+    // z2 = cos(-_transfromCloudToMap[1])*z1 + sin(-_transfromCloudToMap[1])*x1;
+    // y2 = y1;
+    // x2 = -sin(-_transfromCloudToMap[1])*z1 + cos(-_transfromCloudToMap[1])*x1;
+    //
+    // // rotate with z axis (yaw).
+    // cloudOut->points[i].x = cos(-_transfromCloudToMap[2])*x2 + sin(-_transfromCloudToMap[2])*y2 + _transfromCloudToMap[3];
+    // cloudOut->points[i].y = -sin(-_transfromCloudToMap[2])*x2 + cos(-_transfromCloudToMap[2])*y2 + _transfromCloudToMap[4];
+    // cloudOut->points[i].z = z2 + _transfromCloudToMap[5];
+
   }
+
   *_globalMap += *cloudOut;
 
   publishMap();

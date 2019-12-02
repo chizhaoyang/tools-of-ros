@@ -1,0 +1,6 @@
+topic:
+  pointcloud: "/velodyne_points2"
+  globalMap: "/global_map"
+
+frame:
+  target: "world"
