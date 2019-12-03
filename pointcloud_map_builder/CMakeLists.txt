@@ -134,6 +134,7 @@ link_directories(
 ## Declare a C++ library
 add_library(pointcloudMapBuilder
   src/pointcloudMapBuilder.cpp
+  src/tfToNavmsgs.cpp
 )
 
 ## Add cmake target dependencies of the library
@@ -145,7 +146,7 @@ add_library(pointcloudMapBuilder
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/pointcloud_map_builder_node.cpp)
-
+add_executable(tf_to_navmsgs_node src/tf_to_navmsgs_node.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -155,9 +156,15 @@ add_executable(${PROJECT_NAME}_node src/pointcloud_map_builder_node.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
+add_dependencies(tf_to_navmsgs_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  pointcloudMapBuilder
+)
+
+target_link_libraries(tf_to_navmsgs_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   pointcloudMapBuilder

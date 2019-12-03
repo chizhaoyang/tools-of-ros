@@ -2,6 +2,8 @@
 // and the world frame;
 // generate the point cloud map.
 
+// Author: Chizhao Yang
+
 #ifndef POINTCLOUDMAPBUILDER_H
 #define POINTCLOUDMAPBUILDER_H
 
@@ -25,23 +27,27 @@ public:
   ~PointcloudMapBuilder() = default;
 
 private:
-  void pointcloudHandler(const sensor_msgs::PointCloud2ConstPtr& pointcloudMsg);
-  void listenTFTrans();
+  void pointcloudHandler(const sensor_msgs::PointCloud2ConstPtr& pointcloudMsg, const nav_msgs::Odometry::ConstPtr& odomTrans);
+
   void transfromCloudToMap();
   void publishMap();
 
   ros::NodeHandle _nh;
-  ros::Subscriber _subCloud;
+
   ros::Publisher _pubGlobalMap;
 
   std::string _pointcloudTopic;
   std::string _globalMapTopic;
-  // std::string _sourceFrame;
+  std::string _odometryTopic;
+
   std::string _targetFrame;
+  std::string _fileDirectory;
 
   pcl::PointCloud<PointType>::Ptr _cloudIn;
   pcl::PointCloud<PointType>::Ptr _globalMap;
   pcl::PointCloud<PointType>::Ptr _globalMapDS;
+
+  pcl::VoxelGrid<PointType> _downSizeFilter;
 
   float _transfromCloudToMap[6];
 

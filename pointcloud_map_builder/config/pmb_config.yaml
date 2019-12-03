@@ -1,6 +1,16 @@
+# the path save the pcd map.
+fileDirectory: "/tmp/"
+
 topic:
   pointcloud: "/velodyne_points2"
+  # global map topic name is the final map topic name
+  # defined in the pointcloud_map_builder_node
   globalMap: "/global_map"
+  # odometry topic name is the topic from tf to odometry
+  # defined in the tf_to_navmsgs_node
+  odometryTopic: "/odometry_trans"
 
 frame:
+  # frome source frame to target frame
   target: "world"
+  source: "velodyne2"

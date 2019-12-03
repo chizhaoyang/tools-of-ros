@@ -3,6 +3,7 @@
   <param name="/use_sim_time" value="true"/>
 
   <node pkg="pointcloud_map_builder" type="pointcloud_map_builder_node" name="pointcloud_map_builder_node" output="screen"/>
+  <node pkg="pointcloud_map_builder" type="tf_to_navmsgs_node" name="tf_to_navmsgs_node" output="screen"/>
 
   <rosparam file="$(find pointcloud_map_builder)/config/pmb_config.yaml"/>
 
